@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   ImageIcon,
   Send,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -38,6 +39,12 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/studio", label: "创作台", icon: LayoutGrid, badgeKey: "topics" },
       { href: "/factory", label: "素材工厂", icon: ImageIcon },
       { href: "/publish", label: "发布箱", icon: Send, badgeKey: "publish" },
+    ],
+  },
+  {
+    label: "积累",
+    items: [
+      { href: "/knowledge", label: "知识库", icon: BookOpen },
     ],
   },
 ];
