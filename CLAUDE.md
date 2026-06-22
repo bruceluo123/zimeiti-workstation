@@ -1,9 +1,9 @@
-# 自媒体工作站
+# 🍔 麦满分工作站
 
 ## 项目概述
 自媒体内容生产平台：今日早报 → 想法记录 → 灵感库 → 创作台看板 → 素材工厂 → 发布箱。
 
-- **线上地址**: https://zimeiti-workstation.vercel.app
+- **线上地址**: https://burger-workstation.vercel.app
 - **GitHub**: https://github.com/bruceluo123/zimeiti-workstation
 - **部署方式**: Vercel 自动部署（push to master → auto deploy）
 - **数据库**: Upstash KV — `positive-mongrel-70521.upstash.io`（`zmt:` 命名空间，与招聘系统共用实例但数据隔离）

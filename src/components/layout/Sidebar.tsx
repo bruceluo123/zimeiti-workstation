@@ -62,12 +62,12 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 flex h-screen flex-col border-r border-line bg-surface px-4 py-6">
       <Link href="/" className="mb-2 flex items-center gap-2.5 border-b border-line px-2 pb-5">
-        <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px] bg-gradient-to-br from-terra to-terra-deep font-serif text-[19px] font-semibold text-white shadow-[0_4px_10px_-3px_rgba(159,68,34,0.5)]">
-          岛
+        <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px] bg-gradient-to-br from-terra to-terra-deep text-[22px] shadow-[0_4px_10px_-3px_rgba(159,68,34,0.5)]">
+          🍔
         </span>
         <span>
           <span className="block font-serif text-[16px] font-semibold leading-tight tracking-wide">
-            自媒体工作站
+            麦满分工作站
           </span>
           <span className="block text-[11px] font-light tracking-[2px] text-muted">STUDIO</span>
         </span>

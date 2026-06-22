@@ -5,7 +5,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { SyncProvider } from "@/components/layout/SyncProvider";
 
 export const metadata: Metadata = {
-  title: "自媒体工作站",
+  title: "麦满分工作站",
   description: "从念头到发布，一条线走完的内容生产平台",
 };
 
