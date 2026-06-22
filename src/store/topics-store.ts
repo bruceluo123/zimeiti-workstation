@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Platform, Topic, TopicStage } from "@/types/topic";
+import type { Platform, PublishItem, Topic, TopicStage } from "@/types/topic";
 import { nextStage, prevStage } from "@/types/topic";
 import { uid } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ interface TopicsState {
   removeTopic: (id: string) => void;
   moveTopic: (id: string, dir: "next" | "prev") => void;
   setStage: (id: string, stage: TopicStage) => void;
+  updateTopic: (id: string, patch: Partial<Omit<Topic, "id" | "createdAt">>) => void;
+  setPublishItem: (id: string, item: PublishItem) => void;
   applyRemote: (remote: Topic[]) => void;
 }
 
@@ -122,6 +124,20 @@ export const useTopicsStore = create<TopicsState>()(
           topics: state.topics.map((t) =>
             t.id === id ? { ...t, stage, updatedAt: now() } : t
           ),
+        })),
+      updateTopic: (id, patch) =>
+        set((state) => ({
+          topics: state.topics.map((t) =>
+            t.id === id ? { ...t, ...patch, updatedAt: now() } : t
+          ),
+        })),
+      setPublishItem: (id, item) =>
+        set((state) => ({
+          topics: state.topics.map((t) => {
+            if (t.id !== id) return t;
+            const existing = (t.publishItems ?? []).filter((p) => p.platform !== item.platform);
+            return { ...t, publishItems: [...existing, item], updatedAt: now() };
+          }),
         })),
       applyRemote: (remote) =>
         set((state) => ({ topics: mergeTopics(state.topics, remote) })),

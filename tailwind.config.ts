@@ -28,7 +28,7 @@ const config: Config = {
         card: "0 1px 2px rgba(43,38,34,.04), 0 8px 24px -12px rgba(43,38,34,.12)",
       },
       borderRadius: {
-        card: "14px",
+        card: "8px",
       },
     },
   },

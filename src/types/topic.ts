@@ -1,18 +1,28 @@
 export type TopicStage =
-  | "idea" // 选题待定
-  | "material" // 已收集素材
-  | "shaped" // 想法成形
-  | "copy" // 文案完成
-  | "assets" // 素材就绪
-  | "ready" // 待发布
+  | "idea"       // 选题待定
+  | "material"   // 已收集素材
+  | "shaped"     // 想法成形
+  | "copy"       // 文案完成
+  | "assets"     // 素材就绪
+  | "ready"      // 待发布
   | "published"; // 已发布
 
 export type Platform = "xhs" | "douyin" | "x" | "wechat";
+
+export interface PublishItem {
+  platform: Platform;
+  title?: string;
+  tags?: string[];
+  coverUrl?: string;
+  videoPath?: string; // 本地文件名（不传二进制）
+}
 
 export interface Topic {
   id: string;
   title: string;
   note?: string;
+  script?: string;               // 口播方案全文
+  publishItems?: PublishItem[];  // 各平台发布物料
   stage: TopicStage;
   platforms: Platform[];
   createdAt: string;
@@ -22,17 +32,17 @@ export interface Topic {
 interface StageMeta {
   key: TopicStage;
   label: string;
-  color: string; // dot / accent color
+  color: string;
 }
 
 export const STAGES: StageMeta[] = [
-  { key: "idea", label: "选题待定", color: "#988b7c" },
-  { key: "material", label: "已收集素材", color: "#c99a3f" },
-  { key: "shaped", label: "想法成形", color: "#7c8a6a" },
-  { key: "copy", label: "文案完成", color: "#bf5b33" },
-  { key: "assets", label: "素材就绪", color: "#9e4422" },
-  { key: "ready", label: "待发布", color: "#3b3a52" },
-  { key: "published", label: "已发布", color: "#7c8a6a" },
+  { key: "idea",      label: "选题待定",  color: "#9a9aa4" },
+  { key: "material",  label: "已收集素材", color: "#b45309" },
+  { key: "shaped",    label: "想法成形",  color: "#047857" },
+  { key: "copy",      label: "文案完成",  color: "#065f46" },
+  { key: "assets",    label: "素材就绪",  color: "#0369a1" },
+  { key: "ready",     label: "待发布",   color: "#4f46e5" },
+  { key: "published", label: "已发布",   color: "#6b7280" },
 ];
 
 export const STAGE_ORDER: TopicStage[] = STAGES.map((s) => s.key);
@@ -45,10 +55,10 @@ interface PlatformMeta {
 }
 
 export const PLATFORMS: Record<Platform, PlatformMeta> = {
-  xhs: { key: "xhs", label: "小红书", fg: "#c4365a", bg: "#fdeaef" },
-  douyin: { key: "douyin", label: "抖音", fg: "#3b3a52", bg: "#eae9f0" },
-  x: { key: "x", label: "X", fg: "#2b5a6e", bg: "#e6eef2" },
-  wechat: { key: "wechat", label: "公众号", fg: "#3f6b4a", bg: "#e7f1e9" },
+  xhs:    { key: "xhs",    label: "小红书", fg: "#be185d", bg: "#fce7f3" },
+  douyin: { key: "douyin", label: "抖音",   fg: "#1d1d2e", bg: "#ededf5" },
+  x:      { key: "x",      label: "X",     fg: "#0c4a6e", bg: "#e0f2fe" },
+  wechat: { key: "wechat", label: "公众号", fg: "#14532d", bg: "#dcfce7" },
 };
 
 export function nextStage(stage: TopicStage): TopicStage {

@@ -3,19 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --bg: #faf6f0;
-  --surface: #fffdfa;
-  --surface-2: #f3ece2;
-  --ink: #2b2622;
-  --ink-soft: #5c544b;
-  --muted: #988b7c;
-  --line: #e7dccd;
-  --terra: #bf5b33;
-  --terra-deep: #9e4422;
-  --terra-wash: #f6e7dc;
-  --sage: #7c8a6a;
-  --gold: #c99a3f;
-  --serif: Georgia, "Songti SC", "Source Han Serif SC", STSong, "宋体", SimSun, serif;
+  /* 中性高效派 · 网格基底 */
+  --bg: #f6f6f7;
+  --surface: #ffffff;
+  --surface-2: #f0f0f2;
+  --ink: #171719;
+  --ink-soft: #50505a;
+  --muted: #9a9aa4;
+  --line: #e3e3e8;
+
+  /* 强调色：墨绿 */
+  --terra: #047857;
+  --terra-deep: #065f46;
+  --terra-wash: #e9f6f0;
+  --sage: #50505a;
+  --gold: #059669;
+
+  --serif: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
   --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 

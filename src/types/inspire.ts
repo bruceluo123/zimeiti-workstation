@@ -21,7 +21,8 @@ export interface InspireItem {
 
 export interface InspireResponse {
   success: boolean;
-  ai: InspireItem[];
+  ai: InspireItem[];        // mode=selected 精选
+  daily: InspireItem[];     // /daily 当日汇总
   x: InspireItem[];
   fetchedAt: string;
   error?: string;

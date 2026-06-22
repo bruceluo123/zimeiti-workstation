@@ -10,6 +10,7 @@ import {
   ImageIcon,
   Send,
   BookOpen,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -45,6 +46,12 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     label: "积累",
     items: [
       { href: "/knowledge", label: "知识库", icon: BookOpen },
+    ],
+  },
+  {
+    label: "系统",
+    items: [
+      { href: "/settings", label: "设置", icon: Settings },
     ],
   },
 ];

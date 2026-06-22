@@ -7,7 +7,8 @@ import type { InspireItem, InspireResponse } from "@/types/inspire";
 
 export function BriefList() {
   const addTopic = useTopicsStore((s) => s.addTopic);
-  const [items, setItems] = useState<InspireItem[]>([]);
+  const [daily, setDaily] = useState<InspireItem[]>([]);
+  const [x, setX] = useState<InspireItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
@@ -18,13 +19,14 @@ export function BriefList() {
       .then((r) => r.json() as Promise<InspireResponse>)
       .then((data) => {
         if (cancelled) return;
-        // 合并 AI + X，各最多取前 3 条，共 6 条展示
-        const merged = [...data.ai.slice(0, 3), ...data.x.slice(0, 3)];
-        setItems(merged);
+        // 优先用日报（更结构化），日报为空时回落到精选
+        const briefItems = data.daily.length > 0 ? data.daily : data.ai;
+        setDaily(briefItems.slice(0, 5));
+        setX(data.x.slice(0, 3));
         if (!data.success && data.error) setError(data.error);
       })
       .catch(() => {
-        if (!cancelled) setError("网络异常，使用离线示例");
+        if (!cancelled) setError("网络异常");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -38,9 +40,10 @@ export function BriefList() {
     setPicked((prev) => [...prev, item.id]);
   };
 
-  // 离线占位
-  const display: InspireItem[] = items.length > 0 ? items : [
-    { id: "placeholder-1", source: "ai", title: "今日 AI 早报加载中…", summary: "数据正在从 aihot.virxact.com 拉取", url: "#", sourceName: "AI HOT", category: null, publishedAt: null, score: null },
+  const allItems = [...daily, ...x];
+
+  const display: InspireItem[] = allItems.length > 0 ? allItems : [
+    { id: "placeholder-1", source: "ai", title: "今日 AI 早报加载中…", summary: "9 点自动拉取，首次访问需稍等", url: "#", sourceName: "AI HOT", category: null, publishedAt: null, score: null },
   ];
 
   return (
@@ -56,47 +59,37 @@ export function BriefList() {
       </CardTitle>
       <p className="mb-4 mt-0.5 text-[12.5px] text-muted">
         {loading
-          ? "正在从 aihot 拉取 AI 精选…"
+          ? "正在从 aihot 拉取今日日报…"
           : error
           ? `⚠ ${error}`
-          : `aihot 精选 ${items.filter((i) => i.source === "ai").length} 条 · X 精选 ${items.filter((i) => i.source === "x").length} 条`}
+          : `日报 ${daily.length} 条${x.length > 0 ? ` · X 精选 ${x.length} 条` : ""}`}
       </p>
       <ul className="flex flex-col">
         {display.map((item, i) => (
           <li
             key={item.id}
-            className="flex items-start gap-3.5 border-b border-dashed border-line py-3.5 last:border-none last:pb-0"
+            className="flex items-start gap-3.5 border-b border-line py-3 last:border-none last:pb-0"
           >
-            <span className="w-[26px] flex-none pt-px font-serif text-[13px] font-semibold text-terra">
-              {item.source === "x" ? "𝕏" : `N${String(i + 1).padStart(2, "0")}`}
+            <span className="w-5 flex-none pt-0.5 text-[11px] font-semibold text-terra tabular-nums">
+              {item.source === "x" ? "𝕏" : String(i + 1).padStart(2, "0")}
             </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[14.5px] font-medium leading-snug text-ink line-clamp-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13.5px] font-medium leading-snug text-ink line-clamp-2">
                 {item.title}
               </div>
               {item.summary && (
-                <div className="mt-1 text-[12.5px] leading-relaxed text-ink-soft line-clamp-2">
+                <div className="mt-0.5 text-[12px] leading-relaxed text-ink-soft line-clamp-2">
                   {item.summary}
                 </div>
               )}
-              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                <span className="inline-block rounded-[5px] border border-line px-[7px] text-[11px] text-muted">
-                  {item.sourceName}
-                </span>
-                {item.category && (
-                  <span className="inline-block rounded-[5px] bg-terra-wash px-[7px] text-[11px] text-terra-deep">
-                    {item.category}
-                  </span>
-                )}
-              </div>
             </div>
             <button
               type="button"
               onClick={() => pick(item)}
               disabled={picked.includes(item.id) || item.url === "#"}
-              className="flex-none self-center rounded-md border px-[9px] py-1 text-[11px] font-medium transition disabled:cursor-default disabled:opacity-60 border-terra-wash bg-terra-wash text-terra-deep enabled:hover:border-terra enabled:hover:bg-terra enabled:hover:text-white"
+              className="flex-none self-center rounded-[5px] border border-terra-wash bg-terra-wash px-[9px] py-1 text-[11px] font-medium text-terra-deep transition disabled:cursor-default disabled:opacity-50 enabled:hover:border-terra enabled:hover:bg-terra enabled:hover:text-white"
             >
-              {picked.includes(item.id) ? "已加入 ✓" : "→ 选题"}
+              {picked.includes(item.id) ? "✓" : "选题"}
             </button>
           </li>
         ))}

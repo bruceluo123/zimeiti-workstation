@@ -3,8 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { InspireCategory, InspireItem, InspireResponse } from "@/types/inspire";
 
-// aihot 公开 API：/api/public/* 走 nginx UA 黑名单，必须带浏览器 UA，否则 403。
-const AIHOT_BASE = "https://aihot.virxact.com";
+const AIHOT_BASE = process.env.ZMT_AIHOT_BASE ?? "https://aihot.virxact.com";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 zmt-workstation/1.0";
 
@@ -27,11 +26,11 @@ function normalizeCategory(raw: string | null | undefined): InspireCategory | nu
   return null;
 }
 
-function toInspireItem(it: AihotItem): InspireItem | null {
+function toInspireItem(it: AihotItem, src: "ai"): InspireItem | null {
   if (!it?.id || !it?.title || !it?.url) return null;
   return {
     id: it.id,
-    source: "ai",
+    source: src,
     title: it.title,
     summary: it.summary ?? "",
     url: it.url,
@@ -42,20 +41,31 @@ function toInspireItem(it: AihotItem): InspireItem | null {
   };
 }
 
-async function fetchAihot(): Promise<InspireItem[]> {
+// 精选（热榜）
+async function fetchAihotSelected(): Promise<InspireItem[]> {
   const url = `${AIHOT_BASE}/api/public/items?mode=selected&take=30`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": UA },
-    next: { revalidate: 300 }, // 与 aihot 服务端 5 分钟缓存对齐
-  });
-  if (!res.ok) throw new Error(`aihot ${res.status}`);
+  const res = await fetch(url, { headers: { "User-Agent": UA }, next: { revalidate: 300 } });
+  if (!res.ok) throw new Error(`aihot selected ${res.status}`);
   const json = (await res.json()) as { items?: AihotItem[] };
-  const items = Array.isArray(json.items) ? json.items : [];
-  return items.map(toInspireItem).filter((x): x is InspireItem => x !== null);
+  return (Array.isArray(json.items) ? json.items : [])
+    .map((it) => toInspireItem(it, "ai"))
+    .filter((x): x is InspireItem => x !== null);
 }
 
-// agent-reach（X 抓取）是 CLI skill，无法在 serverless 运行时直接调用。
-// 约定：skill 把抓到的推文写到 data/x-feed.json，本路由优雅读取；文件不存在则返回空。
+// 今日日报
+async function fetchAihotDaily(): Promise<InspireItem[]> {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const url = `${AIHOT_BASE}/api/public/daily?date=${today}`;
+  const res = await fetch(url, { headers: { "User-Agent": UA }, next: { revalidate: 600 } });
+  if (!res.ok) return []; // 日报可能当天尚未生成，静默降级
+  const json = (await res.json()) as { items?: AihotItem[]; data?: AihotItem[] };
+  const raw = json.items ?? json.data ?? [];
+  return (Array.isArray(raw) ? raw : [])
+    .map((it) => toInspireItem(it, "ai"))
+    .filter((x): x is InspireItem => x !== null);
+}
+
+// X 推文：由每日脚本写入 data/x-feed.json
 async function readXFeed(): Promise<InspireItem[]> {
   try {
     const file = path.join(process.cwd(), "data", "x-feed.json");
@@ -81,27 +91,19 @@ async function readXFeed(): Promise<InspireItem[]> {
 }
 
 export async function GET() {
-  const [aiResult, x] = await Promise.all([
-    fetchAihot().catch(() => null),
+  const [selectedResult, dailyResult, x] = await Promise.all([
+    fetchAihotSelected().catch(() => null),
+    fetchAihotDaily().catch(() => []),
     readXFeed(),
   ]);
 
-  if (aiResult === null) {
-    const body: InspireResponse = {
-      success: false,
-      ai: [],
-      x,
-      fetchedAt: new Date().toISOString(),
-      error: "aihot 拉取失败（网络或上游限流），稍后重试",
-    };
-    return NextResponse.json(body, { status: 200 });
-  }
-
   const body: InspireResponse = {
-    success: true,
-    ai: aiResult,
+    success: selectedResult !== null,
+    ai: selectedResult ?? [],
+    daily: dailyResult,
     x,
     fetchedAt: new Date().toISOString(),
+    error: selectedResult === null ? "aihot 精选拉取失败，稍后重试" : undefined,
   };
   return NextResponse.json(body);
 }
