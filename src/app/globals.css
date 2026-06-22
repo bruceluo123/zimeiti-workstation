@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #faf6f0;
+  --surface: #fffdfa;
+  --surface-2: #f3ece2;
+  --ink: #2b2622;
+  --ink-soft: #5c544b;
+  --muted: #988b7c;
+  --line: #e7dccd;
+  --terra: #bf5b33;
+  --terra-deep: #9e4422;
+  --terra-wash: #f6e7dc;
+  --sage: #7c8a6a;
+  --gold: #c99a3f;
+  --serif: Georgia, "Songti SC", "Source Han Serif SC", STSong, "宋体", SimSun, serif;
+  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+/* thin warm scrollbar */
+::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.35s ease;
+}
