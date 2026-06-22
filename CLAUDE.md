@@ -65,6 +65,7 @@ DASHSCOPE_API_KEY=sk-xxx    # 素材工厂生图，需手动在 Vercel 配置
 
 ## Session 日志
 - [2026-06-22] 完成 A/B/C：KV env-var 化，/api/inspire 接 aihot，灵感库全页，/api/factory/image + 素材工厂5维度UI；git init + GitHub + Vercel 部署上线
+- [2026-06-22] 设计切墨绿中性高效派（CSS token 重写，全 sans，8px 圆角，高对比）；Part1 日报自动化（aihot /daily + scripts/daily-9am.ps1 + register-task.ps1）；Part3 创作台全功能（TopicCard 生成口播方案/内联编辑、KanbanBoard 早报选题 modal + AI 筛选）；发布箱（4平台物料生成+封面+标题+Tag）；设置页（风格档案表单+MCP配置说明）；lib/ai.ts DeepSeek 客户端；api/studio 三路由（topics/script/publish-meta）| 卡点：CSS 热更新失效导致页面无样式，需改 globals.css 后立即重启 dev server | 下次：配 DEEPSEEK_API_KEY 到 Vercel；注册计划任务(register-task.ps1)；MCP 平台接入
 
 ## 常用命令
 ```bash
