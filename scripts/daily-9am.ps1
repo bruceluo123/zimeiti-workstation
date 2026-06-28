@@ -26,11 +26,18 @@ if (Test-Path $dailyInputSkill) {
     Write-Host "[9am] 未找到 daily-input skill，跳过" -ForegroundColor Yellow
 }
 
-# ---------- Step 2: 解析 X feed ----------
-Write-Host "[9am] 解析 X 推文..."
-$xfeedScript = Join-Path $scriptDir "parse-xfeed.mjs"
-$earlyReportPath = "$dailyDir\00_早报.md"
-node $xfeedScript $earlyReportPath
+# ---------- Step 2: 用 cookie 拉 X「正在关注」流 ----------
+# 注意：必须用 py launcher（playwright 装在 py 环境，PowerShell 的 python 是 Store 桩）
+Write-Host "[9am] 拉取 X 关注流..."
+$fetchXScript = Join-Path $scriptDir "fetch-x-home.py"
+$env:PYTHONIOENCODING = "utf-8"
+py $fetchXScript --scroll 4 --hours 48
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[9am] X 关注流抓取失败，尝试降级：解析早报 markdown..." -ForegroundColor Yellow
+    $xfeedScript = Join-Path $scriptDir "parse-xfeed.mjs"
+    $earlyReportPath = "$dailyDir\00_早报.md"
+    if (Test-Path $earlyReportPath) { node $xfeedScript $earlyReportPath }
+}
 Write-Host "[9am] x-feed.json 更新完成"
 
 # ---------- Step 3: git push → Vercel 自动部署 ----------

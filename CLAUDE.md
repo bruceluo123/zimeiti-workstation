@@ -10,7 +10,7 @@
 
 ## 技术栈
 - Next.js 14 (App Router) + React 18 + TypeScript
-- Tailwind CSS 3，暖色出版物设计系统（cream #faf6f0 + terracotta #bf5b33）
+- Tailwind CSS 3，墨绿中性高效派（bg #f6f6f7 + terra #047857 墨绿）
 - Zustand（状态管理，persist → localStorage）
 - Upstash KV 云同步（浏览器直连，10秒轮询，墓碑机制防冲突）
 - DeepSeek/aihot API（灵感库数据）
@@ -56,6 +56,25 @@ NEXT_PUBLIC_ZMT_KV_TOKEN=...                                        # 已配
 DASHSCOPE_API_KEY=sk-xxx    # 素材工厂生图，需手动在 Vercel 配置
 ```
 
+## ⚠️ CSS 修改必读（血泪教训）
+
+**修改 `globals.css` 或 `tailwind.config.ts` 后，Tailwind JIT 热更新不可靠，会导致页面变成无样式裸 HTML！**
+
+每次改完这两个文件，**必须立即执行**：
+```powershell
+powershell -File scripts\restart-dev.ps1
+```
+或手动：
+```bash
+taskkill //PID <dev-server-pid> //F
+rm -rf .next
+npm run dev -- --port 3002
+```
+
+验证方法：`curl http://localhost:3002/_next/static/css/app/layout.css | grep "\-\-terra"` 应该返回 `--terra: #047857`
+
+项目已在 `.claude/settings.json` 配置钩子，Claude 编辑这两个文件后会自动弹出警告。
+
 ## 关键设计决策
 
 1. **字体**：纯本地系统字体（Georgia/宋体/微软雅黑），禁用 Google Fonts（中国访问会 hang 页面）
@@ -66,6 +85,9 @@ DASHSCOPE_API_KEY=sk-xxx    # 素材工厂生图，需手动在 Vercel 配置
 ## Session 日志
 - [2026-06-22] 完成 A/B/C：KV env-var 化，/api/inspire 接 aihot，灵感库全页，/api/factory/image + 素材工厂5维度UI；git init + GitHub + Vercel 部署上线
 - [2026-06-22] 设计切墨绿中性高效派（CSS token 重写，全 sans，8px 圆角，高对比）；Part1 日报自动化（aihot /daily + scripts/daily-9am.ps1 + register-task.ps1）；Part3 创作台全功能（TopicCard 生成口播方案/内联编辑、KanbanBoard 早报选题 modal + AI 筛选）；发布箱（4平台物料生成+封面+标题+Tag）；设置页（风格档案表单+MCP配置说明）；lib/ai.ts DeepSeek 客户端；api/studio 三路由（topics/script/publish-meta）| 卡点：CSS 热更新失效导致页面无样式，需改 globals.css 后立即重启 dev server | 下次：配 DEEPSEEK_API_KEY 到 Vercel；注册计划任务(register-task.ps1)；MCP 平台接入
+- [2026-06-23] CSS 防护：kill dev server + rm -rf .next + 重启修复无样式问题；新增 scripts/restart-dev.ps1（一键清缓存重启）+ .claude/settings.json PostToolUse hook（编辑globals.css/tailwind.config时自动警告）+ CLAUDE.md ⚠️ 血泪教训节；token 验证：`--terra: #047857` 正确
+- [2026-06-28] X 关注流接入灵感页：X Free API 读 following 被墙(401)，弃用 sync-following-to-list.py；改 scripts/fetch-x-home.py（Playwright+Chromium 注入 ~/.claude/private/x_cookies.json 的 auth_token/ct0，拦截 HomeTimeline GraphQL 响应原始 JSON，免 queryId 免 Nitter）；实测抓 40 条→data/x-feed.json→/api/inspire 的 x 分组；修 fetch-x-list.py 传了 fetch_list_tweets 不接受的 backend 参数 | 用的是 For You 流，Following tab 未点中 | 下次：纯 Following 流可调 tab 选择器；接每日定时
+- [2026-06-28] X 关注流收尾两件事：①fetch-x-home.py 修好纯 Following 流（多选择器点「正在关注」tab+按 _op 标记只留 HomeLatestTimeline，剔除切 tab 前的 For You，实测 56 条）；②每日定时 scripts/fetch-x-home-daily.ps1（py 跑脚本→git push→Vercel）+register-x-home-task.ps1（注册计划任务 ZmtXHomeDaily 每天 08:30，已 Ready） | 坑：ps1 必须用 py（非 python，playwright 装在 py 环境）；含中文 ps1 须存 UTF-8 with BOM 否则 PS5.1 按 GBK 解析报错 | 下次：daily-9am.ps1 Step2 仍调废弃 fetch-x-list.py 可一并切到 fetch-x-home.py
 
 ## 常用命令
 ```bash
