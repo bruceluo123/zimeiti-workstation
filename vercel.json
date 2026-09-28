@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/x-sync", "schedule": "*/30 * * * *" },
+    { "path": "/api/cron/weibo-publish", "schedule": "*/5 * * * *" }
+  ]
+}

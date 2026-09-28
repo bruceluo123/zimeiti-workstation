@@ -5,18 +5,25 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   MessageCircle,
-  Newspaper,
   LayoutGrid,
   ImageIcon,
-  Send,
   BookOpen,
   Settings,
+  LibraryBig,
+  CloudUpload,
+  Video,
+  Lightbulb,
+  ScanSearch,
+  Share2,
+  PenLine,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useThoughtsStore } from "@/store/thoughts-store";
 import { useTopicsStore } from "@/store/topics-store";
 import { computeStreak } from "@/lib/utils";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 interface NavItem {
   href: string;
@@ -27,25 +34,32 @@ interface NavItem {
 
 const GROUPS: { label: string; items: NavItem[] }[] = [
   {
-    label: "每日",
+    label: "核心工作台",
     items: [
-      { href: "/", label: "今日", icon: Home },
-      { href: "/flow", label: "想法流", icon: MessageCircle },
+      { href: "/", label: "首页", icon: Home },
+      { href: "/assistant", label: "AI 工作台", icon: Bot },
+      { href: "/publish", label: "多平台分发", icon: Share2, badgeKey: "publish" },
+      { href: "/inspire", label: "灵感随笔", icon: Lightbulb },
+      { href: "/resources", label: "资源库", icon: LibraryBig },
+      { href: "/write", label: "边查边写", icon: PenLine },
+      { href: "/deconstruct", label: "内容拆解", icon: ScanSearch },
     ],
   },
   {
-    label: "生产线",
+    label: "继续创作",
     items: [
-      { href: "/inspire", label: "灵感库", icon: Newspaper },
+      { href: "/flow", label: "想法流", icon: MessageCircle },
+      { href: "/content", label: "我的内容", icon: LibraryBig },
+      { href: "/video", label: "拍视频", icon: Video },
       { href: "/studio", label: "创作台", icon: LayoutGrid, badgeKey: "topics" },
       { href: "/factory", label: "素材工厂", icon: ImageIcon },
-      { href: "/publish", label: "发布箱", icon: Send, badgeKey: "publish" },
     ],
   },
   {
     label: "积累",
     items: [
       { href: "/knowledge", label: "知识库", icon: BookOpen },
+      { href: "/legacy", label: "旧内容备份", icon: CloudUpload },
     ],
   },
   {
@@ -74,11 +88,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen flex-col border-r border-line bg-surface px-4 py-6">
+    <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-line bg-surface px-4 py-6 md:flex">
       <Link href="/" className="mb-2 flex items-center gap-2.5 border-b border-line px-2 pb-5">
-        <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px] bg-gradient-to-br from-terra to-terra-deep text-[22px] shadow-[0_4px_10px_-3px_rgba(159,68,34,0.5)]">
-          🍔
-        </span>
+        <BrandMark className="h-[34px] w-[34px] flex-none drop-shadow-[0_4px_5px_rgba(8,127,96,0.22)]" />
         <span>
           <span className="block font-serif text-[16px] font-semibold leading-tight tracking-wide">
             麦满分工作站
@@ -126,10 +138,10 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto border-t border-line px-2.5 pt-3.5 text-[12px] text-muted">
-        连续记录{" "}
+        本机连续记录{" "}
         <b className="font-medium text-ink-soft">{hydrated ? streak : "—"} 天</b>
         <br />
-        本周产出 <b className="font-medium text-ink-soft">5 条</b>
+        本机选题 <b className="font-medium text-ink-soft">{hydrated ? topics.length : "—"} 条</b>
       </div>
     </aside>
   );

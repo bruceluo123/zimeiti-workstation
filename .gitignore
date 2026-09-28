@@ -13,11 +13,16 @@
 # misc
 .DS_Store
 *.pem
+__pycache__/
+*.pyc
+/.claude/
+/scripts/x-tweet-fetcher/
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+/.runtime/
 
 # local env files
 .env*.local

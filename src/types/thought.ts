@@ -6,5 +6,7 @@ export interface Thought {
   id: string;
   content: string;
   tags: string[];
+  imageIds?: string[];
+  sourceUrl?: string;
   createdAt: string; // ISO 8601
 }

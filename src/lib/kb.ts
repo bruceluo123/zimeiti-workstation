@@ -7,8 +7,7 @@ import path from "node:path";
 import matter from "gray-matter";
 
 // ── 路径配置 ─────────────────────────────────────────────────────────────────
-export const WIKI_ROOT = path.resolve("D:/wiki/个人知识库/wiki");
-const HUB_DIR = path.join(WIKI_ROOT, "知识枢纽");
+export const WIKI_ROOT = path.resolve(process.env.ZMT_WIKI_ROOT || "D:/wiki/个人知识库/wiki");
 
 // ── 类型 ──────────────────────────────────────────────────────────────────────
 export interface KbDoc {
@@ -94,12 +93,12 @@ function readDoc(absPath: string): KbDoc | null {
     const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
     return {
       id,
-      title: data.title ?? id.replace(/_/g, " "),
+      title: typeof data.title === "string" ? data.title : id.replace(/_/g, " "),
       path: rel,
       absPath,
       tags,
-      created: data.created ?? "",
-      updated: data.updated ?? "",
+      created: metadataDate(data.created),
+      updated: metadataDate(data.updated),
       kind: kindFromPath(rel),
       summary: extractSummary(content),
       outLinks: extractLinks(content),
@@ -109,6 +108,11 @@ function readDoc(absPath: string): KbDoc | null {
   } catch {
     return null;
   }
+}
+
+function metadataDate(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
 
 function walkDir(dir: string, results: string[] = []): string[] {
@@ -129,11 +133,11 @@ function walkDir(dir: string, results: string[] = []): string[] {
 let _cache: { docs: KbDoc[]; graph: KbGraph; hubs: KbDoc[] } | null = null;
 
 export function loadKb(): { docs: KbDoc[]; graph: KbGraph; hubs: KbDoc[] } {
-  if (_cache) return _cache;
+  // 本机启动器也运行 next start；本机重试必须读到新增或修改后的文件。
+  if (process.env.NODE_ENV === "production" && process.env.ZMT_LOCAL_CAPTURE_ENABLED !== "true" && _cache) return _cache;
 
   if (!fs.existsSync(WIKI_ROOT)) {
-    // Vercel 等环境读不到本地盘，返回空
-    return { docs: [], graph: { nodes: [], edges: [] }, hubs: [] };
+    throw new Error("Knowledge directory is unavailable");
   }
 
   const allPaths = walkDir(WIKI_ROOT);

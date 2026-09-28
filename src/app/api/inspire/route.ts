@@ -3,6 +3,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { InspireCategory, InspireItem, InspireResponse } from "@/types/inspire";
 
+export const dynamic = "force-dynamic";
+
 const AIHOT_BASE = process.env.ZMT_AIHOT_BASE ?? "https://aihot.virxact.com";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 zmt-workstation/1.0";

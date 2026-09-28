@@ -18,7 +18,7 @@ export function TopBar() {
   const hydrated = useHydrated();
   const thoughts = useThoughtsStore((s) => s.thoughts);
   const streak = computeStreak(thoughts.map((t) => t.createdAt));
-  const { date, meta } = todayLabel();
+  const { date, meta } = hydrated ? todayLabel() : { date: "—", meta: "" };
 
   // Render last 7 days as dots, last one = today
   const dots = Array.from({ length: 7 }, (_, i) => {
@@ -28,13 +28,13 @@ export function TopBar() {
   });
 
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-[18px] border-b border-line bg-bg/85 px-[38px] py-4 backdrop-blur">
+    <div className="sticky top-0 z-10 flex items-center gap-[18px] border-b border-line bg-bg/85 px-5 py-3 backdrop-blur md:px-[38px] md:py-4">
       <div className="font-serif text-[15px] text-ink">
         {date}
         <span className="ml-2 font-sans text-[13px] text-muted">{meta}</span>
       </div>
-      <div className="ml-auto flex items-center gap-2 text-[13px] text-ink-soft">
-        连续打卡
+      <div className="ml-auto hidden items-center gap-2 text-[13px] text-ink-soft sm:flex">
+        本机连续记录
         <span className="flex gap-[3px]">
           {dots.map((d, i) => (
             <i

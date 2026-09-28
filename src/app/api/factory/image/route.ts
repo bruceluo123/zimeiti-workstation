@@ -42,7 +42,8 @@ const ASPECT_SIZE: Record<string, string> = {
 };
 
 interface GenerateBody {
-  title: string;
+  title?: string;
+  prompt?: string;
   type?: string;
   palette?: string;
   rendering?: string;
@@ -53,8 +54,12 @@ function buildPrompt(body: GenerateBody): string {
   const type = TYPE_PROMPTS[body.type ?? "conceptual"] ?? TYPE_PROMPTS.conceptual;
   const palette = PALETTE_PROMPTS[body.palette ?? "warm"] ?? PALETTE_PROMPTS.warm;
   const rendering = RENDERING_PROMPTS[body.rendering ?? "flat-vector"] ?? RENDERING_PROMPTS["flat-vector"];
-  const titleHint = body.title ? `visual representation of "${body.title.slice(0, 60)}", ` : "";
-  return `${titleHint}cover image for article, ${type}, ${palette}, ${rendering}, no text overlay, professional editorial design, high quality`;
+  const subject = body.prompt?.trim()
+    ? body.prompt.trim().slice(0, 1000)
+    : body.title?.trim()
+      ? `visual representation of "${body.title.trim().slice(0, 120)}"`
+      : "editorial content cover";
+  return `${subject}, cover image for article, ${type}, ${palette}, ${rendering}, no text overlay, professional editorial design, high quality`;
 }
 
 async function dsPost(path: string, body: unknown, key: string) {
@@ -99,8 +104,8 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json()) as GenerateBody;
-  if (!body?.title?.trim()) {
-    return NextResponse.json({ error: "title 不能为空" }, { status: 400 });
+  if (!body?.title?.trim() && !body?.prompt?.trim()) {
+    return NextResponse.json({ error: "title 或 prompt 不能为空" }, { status: 400 });
   }
 
   const prompt = buildPrompt(body);

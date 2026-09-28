@@ -1,0 +1,83 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "麦满分工作站：从灵感到发布",
+  "description": "面向接手开发者的主链路导览，覆盖内容输入、状态推进、AI 生成、云同步与知识库边界。",
+  "ref": "master",
+  "steps": [
+    {
+      "directory": "src/app",
+      "title": "应用入口与页面地图",
+      "description": "Next.js App Router 在这里把今日、想法流、灵感库、创作台、素材工厂、发布箱、知识库和设置组织成独立页面；接手新功能时先判断它属于哪一个生产阶段。"
+    },
+    {
+      "file": "src/app/layout.tsx",
+      "pattern": "<SyncProvider>",
+      "title": "全局外壳与同步边界",
+      "description": "所有页面都包在 SyncProvider 内，侧栏和顶部栏常驻；这意味着 thoughts/topics 的本地改动会在任何页面触发同步，页面组件无需各自处理云端连接。"
+    },
+    {
+      "file": "src/components/today/CaptureBox.tsx",
+      "pattern": "const handleSave",
+      "title": "内容生产的原矿入口",
+      "description": "用户先记录一句念头和标签，组件只负责采集，真正的数据写入交给 thoughts-store；输入层刻意保持轻量，避免过早要求结构化。"
+    },
+    {
+      "file": "src/store/thoughts-store.ts",
+      "pattern": "export const useThoughtsStore",
+      "title": "想法流状态",
+      "description": "Zustand 持久化到 localStorage，applyRemote 用按 id 合并保住尚未上传的本地新增；删除传播不在这里完成，而由全局同步桥通过 id 差异写墓碑。"
+    },
+    {
+      "file": "src/components/inspire/InspirePage.tsx",
+      "pattern": "const pick =",
+      "title": "外部灵感进入选题池",
+      "description": "AI 日报和 X 关注流在这里汇合，用户点击选题后只写入一个最小 Topic；素材来源本身不复制进主题，后续若要做溯源需要扩展 Topic 数据契约。"
+    },
+    {
+      "file": "src/types/topic.ts",
+      "pattern": "export const STAGES",
+      "title": "七阶段生产状态机",
+      "description": "Topic 从 idea 一路推进到 published，创作台、首页进度和发布箱都依赖同一份阶段顺序；新增或重命名阶段必须同步检查这些消费者。"
+    },
+    {
+      "file": "src/store/topics-store.ts",
+      "pattern": "generateScript: async",
+      "title": "选题的业务中枢",
+      "description": "主题增删、阶段推进、发布物料和 AI 文案生成都集中在这个 store。生成任务放在 store 而不是卡片组件里，因此页面切换不会丢失运行状态；持久化时只保存 topics。"
+    },
+    {
+      "file": "src/app/api/studio/script/route.ts",
+      "pattern": "export async function POST",
+      "title": "AI 文案生成接口",
+      "description": "接口把选题、切入角度和个人风格拼成提示词，再通过统一 AI 客户端请求兼容 Chat Completions 的模型；浏览器配置优先，服务端环境变量是兜底。"
+    },
+    {
+      "file": "src/components/publish/PublishPage.tsx",
+      "pattern": "function PlatformPanel",
+      "title": "平台化发布物料",
+      "description": "同一个 Topic 按平台分别生成标题、标签和封面提示词，并写回 publishItems；发布箱目前负责备料而非真正调用平台发布 API。"
+    },
+    {
+      "file": "src/lib/sync.ts",
+      "pattern": "async function pushData",
+      "title": "多设备合并与删除墓碑",
+      "description": "浏览器直连 Upstash，推送前先合并远端数据并应用墓碑，避免旧设备覆盖新条目；这是一个最终一致模型，不提供事务或强一致排序。"
+    },
+    {
+      "file": "src/lib/kb.ts",
+      "pattern": "export function loadKb",
+      "title": "知识库是独立数据域",
+      "description": "知识库直接扫描 Obsidian Markdown，解析 frontmatter、双链和待办，完全不进入 Zustand/KV；本地路径是唯一真相源，Vercel 目前读不到该目录。"
+    },
+    {
+      "file": "CLAUDE.md",
+      "pattern": "## 关键设计决策",
+      "title": "接手时必须保留的约束",
+      "description": "这里记录部署、密钥、X 抓取和 CSS 热更新的历史决策。继续开发前先核对这一节，尤其不要破坏 KV 命名空间和本地字体约束。"
+    },
+    {
+      "title": "下一步",
+      "description": "现在可以沿两条主线继续：完善 Topic 的素材溯源与自动推进，或把知识库通过可部署的数据同步方式接入生产环境。"
+    }
+  ]
+}

@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useTopicsStore } from "@/store/topics-store";
 import { useStyleStore } from "@/store/style-store";
+import { useAiConfigStore } from "@/store/ai-config-store";
 import { useHydrated } from "@/hooks/useHydrated";
 import type { Platform, PublishItem, Topic } from "@/types/topic";
 import { PLATFORMS } from "@/types/topic";
-import { Sparkles, Upload, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Upload, Send, ExternalLink, ChevronDown, ChevronUp, ArrowRight, Repeat2, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 const PUBLISH_PLATFORMS: Platform[] = ["xhs", "douyin", "x", "wechat"];
@@ -20,6 +22,7 @@ function PlatformPanel({ topic, platform }: { topic: Topic; platform: Platform }
   const meta = PLATFORMS[platform];
   const setPublishItem = useTopicsStore((s) => s.setPublishItem);
   const profile = useStyleStore((s) => s.profile);
+  const aiConfig = useAiConfigStore((s) => s.config);
 
   const existing: PublishItem = topic.publishItems?.find((p) => p.platform === platform) ?? { platform };
   const [title, setTitle] = useState(existing.title ?? "");
@@ -27,20 +30,24 @@ function PlatformPanel({ topic, platform }: { topic: Topic; platform: Platform }
   const [coverUrl, setCoverUrl] = useState(existing.coverUrl ?? "");
   const [generating, setGenerating] = useState(false);
   const [genCover, setGenCover] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const generateMeta = async () => {
     setGenerating(true);
+    setGenError(null);
     try {
       const res = await fetch("/api/studio/publish-meta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: topic.title, script: topic.script, platform }),
+        body: JSON.stringify({ title: topic.title, script: topic.script, platform, aiConfig }),
       });
       const data = (await res.json()) as { title?: string; tags?: string[]; coverPrompt?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error || `物料生成失败（HTTP ${res.status}）`);
       if (data.title) setTitle(data.title);
       if (data.tags) setTags(data.tags.join(" "));
 
       // 自动生成封面
+      let nextCoverUrl = coverUrl;
       if (data.coverPrompt) {
         setGenCover(true);
         try {
@@ -49,24 +56,33 @@ function PlatformPanel({ topic, platform }: { topic: Topic; platform: Platform }
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               prompt: data.coverPrompt,
-              type: "text-overlay",
-              palette: "neutral",
-              rendering: "photography",
-              aspect: platform === "xhs" ? "3:4" : platform === "douyin" ? "9:16" : "16:9",
+              type: "hero",
+              palette: "elegant",
+              rendering: "digital",
+              aspect: platform === "xhs" ? "1:1" : platform === "douyin" ? "9:16" : "16:9",
             }),
           });
-          const coverData = (await coverRes.json()) as { url?: string };
-          if (coverData.url) setCoverUrl(coverData.url);
-        } catch { /* cover gen failed silently */ }
-        setGenCover(false);
+          const coverData = (await coverRes.json()) as { url?: string; error?: string };
+          if (!coverRes.ok || coverData.error || !coverData.url) {
+            throw new Error(coverData.error || `封面生成失败（HTTP ${coverRes.status}）`);
+          }
+          nextCoverUrl = coverData.url;
+          setCoverUrl(nextCoverUrl);
+        } catch (e) {
+          setGenError(e instanceof Error ? e.message : "封面生成失败");
+        } finally {
+          setGenCover(false);
+        }
       }
 
       setPublishItem(topic.id, {
         platform,
         title: data.title ?? title,
-        tags: data.tags ?? [],
-        coverUrl,
+        tags: data.tags ?? tags.split(/[\s,，]+/).filter(Boolean),
+        coverUrl: nextCoverUrl,
       });
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "物料生成失败");
     } finally {
       setGenerating(false);
     }
@@ -96,9 +112,15 @@ function PlatformPanel({ topic, platform }: { topic: Topic; platform: Platform }
           className="flex items-center gap-1 rounded-[5px] border border-terra-wash bg-terra-wash px-2.5 py-1 text-[11px] font-medium text-terra-deep transition enabled:hover:border-terra enabled:hover:bg-terra enabled:hover:text-white disabled:opacity-60"
         >
           <Sparkles className="h-3 w-3" />
-          {generating ? "生成中…" : genCover ? "生成封面…" : "生成物料"}
+          {genCover ? "生成封面…" : generating ? "生成中…" : "生成物料"}
         </button>
       </div>
+
+      {genError && (
+        <p className="mb-2.5 rounded-[5px] bg-red-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-red-700">
+          {genError}
+        </p>
+      )}
 
       {/* Cover */}
       {coverUrl ? (
@@ -212,8 +234,23 @@ export function PublishPage() {
     : [];
 
   return (
-    <div className="max-w-[1180px] px-[38px] pb-16 pt-9">
-      <PageHeader eyebrow="发布箱" title="待发布选题" sub="物料生成与一键分发" />
+    <div className="max-w-[1180px] px-4 pb-16 pt-6 sm:px-6 md:px-[38px] md:pt-9">
+      <PageHeader eyebrow="发出去" title="多平台分发" sub="先选择内容从哪里来，再决定发到哪里、什么时候发。" />
+
+      <div className="mb-7 grid gap-3 md:grid-cols-2">
+        <Link href="/content" className="group rounded-[18px] border border-line bg-[#143f34] p-5 text-white shadow-card transition hover:-translate-y-0.5">
+          <div className="flex items-start justify-between gap-3"><Repeat2 size={20} /><ArrowRight size={17} className="transition group-hover:translate-x-1" /></div>
+          <h2 className="mt-6 text-lg font-semibold">X 原创 → 微博</h2>
+          <p className="mt-2 text-xs leading-6 text-white/65">自动读取 X 原文，人工初审后分时排期发布。</p>
+        </Link>
+        <div className="rounded-[18px] border border-line bg-[#e9f6f0] p-5 text-[#173f32] shadow-card">
+          <Share2 size={20} />
+          <h2 className="mt-6 text-lg font-semibold">成品 → 多平台</h2>
+          <p className="mt-2 text-xs leading-6 text-[#4b6b5e]">为小红书、抖音、X、公众号生成各自的标题、标签和封面。</p>
+        </div>
+      </div>
+
+      <div className="mb-4"><p className="text-[11px] font-semibold tracking-[1.5px] text-terra">待处理</p><h2 className="mt-1 text-xl font-semibold">成品分发队列</h2></div>
 
       {/* MCP config notice */}
       <div className="mb-6 flex items-start gap-3 rounded-card border border-line bg-surface-2 px-4 py-3">

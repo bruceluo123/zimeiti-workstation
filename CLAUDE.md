@@ -13,7 +13,7 @@
 - Tailwind CSS 3，墨绿中性高效派（bg #f6f6f7 + terra #047857 墨绿）
 - Zustand（状态管理，persist → localStorage）
 - Upstash KV 云同步（浏览器直连，10秒轮询，墓碑机制防冲突）
-- DeepSeek/aihot API（灵感库数据）
+- OpenAI 兼容 AI 接口（DeepSeek/OpenAI/通义/月之暗面/智谱/自定义）+ aihot（灵感库数据）
 - DashScope 通义万象（素材工厂生图）
 - 本地开发端口：**3002**
 
@@ -26,7 +26,9 @@ src/
 │   ├── inspire/page.tsx            # 灵感库（aihot 实时拉取）
 │   ├── studio/page.tsx             # 创作台（7阶段看板）
 │   ├── factory/page.tsx            # 素材工厂（AI 生图）
-│   ├── publish/page.tsx            # 发布箱（占位）
+│   ├── publish/page.tsx            # 发布箱（平台物料 + 封面生成）
+│   ├── knowledge/page.tsx          # Obsidian 知识库（枢纽/图谱/搜索）
+│   ├── settings/page.tsx           # 风格档案 + AI 接口配置
 │   └── api/
 │       ├── inspire/route.ts        # aihot 代理（处理 UA 黑名单）
 │       └── factory/image/route.ts  # DashScope wanx 生图代理
@@ -37,12 +39,17 @@ src/
 │   ├── inspire/                    # InspirePage
 │   ├── studio/                     # KanbanBoard / KanbanColumn / TopicCard
 │   ├── factory/                    # FactoryPage
+│   ├── publish/                    # PublishPage
+│   ├── knowledge/                  # HubWall / KbGraph / KbSearch / DocPanel
 │   └── ui/                         # PageHeader / Card / StubPage
 ├── store/
 │   ├── thoughts-store.ts           # Zustand persist，applyRemote 支持云同步
-│   └── topics-store.ts             # Zustand persist，updatedAt 冲突解决
+│   ├── topics-store.ts             # Zustand persist，冲突解决 + 后台生成
+│   └── ai-config-store.ts          # 浏览器本地 AI Key/Base URL/模型配置
 ├── lib/
 │   ├── sync.ts                     # Upstash KV 双向同步（zmt: 命名空间）
+│   ├── ai.ts                       # OpenAI 兼容接口客户端与地址安全校验
+│   ├── kb.ts                       # 扫描 Obsidian Markdown 并构建图谱
 │   └── utils.ts                    # cn / uid / formatTime / relativeDay / computeStreak
 └── types/
     ├── thought.ts / topic.ts / inspire.ts
@@ -54,6 +61,7 @@ src/
 NEXT_PUBLIC_ZMT_KV_URL=https://positive-mongrel-70521.upstash.io   # 已配
 NEXT_PUBLIC_ZMT_KV_TOKEN=...                                        # 已配
 DASHSCOPE_API_KEY=sk-xxx    # 素材工厂生图，需手动在 Vercel 配置
+ZMT_WIKI_ROOT=D:/wiki/个人知识库/wiki  # 可选；本地知识库根目录
 ```
 
 ## ⚠️ CSS 修改必读（血泪教训）
@@ -81,6 +89,8 @@ npm run dev -- --port 3002
 2. **KV 命名空间**：`zmt:thoughts` / `zmt:topics`，与招聘系统 `recruit:*` 完全隔离
 3. **X 推文**：agent-reach CLI skill 抓取后写入 `data/x-feed.json`，/api/inspire 优雅读取（文件不存在返回空数组）
 4. **素材工厂**：5维度体系参照 baoyu-cover-image skill，后端直调 DashScope wanx-v1 API（异步任务 + 轮询）
+5. **AI 配置**：浏览器配置保存在 localStorage，生成时经本站服务端转发；只有 DeepSeek 官方地址可使用服务端 `DEEPSEEK_API_KEY` 兜底，自定义地址必须随请求提供自己的 Key
+6. **知识库边界**：本地 Obsidian Markdown 是唯一真相源，不进入 Zustand/KV；Vercel 若要展示需另做 Git/构建期同步
 
 ## Session 日志
 - [2026-06-22] 完成 A/B/C：KV env-var 化，/api/inspire 接 aihot，灵感库全页，/api/factory/image + 素材工厂5维度UI；git init + GitHub + Vercel 部署上线
@@ -88,6 +98,7 @@ npm run dev -- --port 3002
 - [2026-06-23] CSS 防护：kill dev server + rm -rf .next + 重启修复无样式问题；新增 scripts/restart-dev.ps1（一键清缓存重启）+ .claude/settings.json PostToolUse hook（编辑globals.css/tailwind.config时自动警告）+ CLAUDE.md ⚠️ 血泪教训节；token 验证：`--terra: #047857` 正确
 - [2026-06-28] X 关注流接入灵感页：X Free API 读 following 被墙(401)，弃用 sync-following-to-list.py；改 scripts/fetch-x-home.py（Playwright+Chromium 注入 ~/.claude/private/x_cookies.json 的 auth_token/ct0，拦截 HomeTimeline GraphQL 响应原始 JSON，免 queryId 免 Nitter）；实测抓 40 条→data/x-feed.json→/api/inspire 的 x 分组；修 fetch-x-list.py 传了 fetch_list_tweets 不接受的 backend 参数 | 用的是 For You 流，Following tab 未点中 | 下次：纯 Following 流可调 tab 选择器；接每日定时
 - [2026-06-28] X 关注流收尾两件事：①fetch-x-home.py 修好纯 Following 流（多选择器点「正在关注」tab+按 _op 标记只留 HomeLatestTimeline，剔除切 tab 前的 For You，实测 56 条）；②每日定时 scripts/fetch-x-home-daily.ps1（py 跑脚本→git push→Vercel）+register-x-home-task.ps1（注册计划任务 ZmtXHomeDaily 每天 08:30，已 Ready） | 坑：ps1 必须用 py（非 python，playwright 装在 py 环境）；含中文 ps1 须存 UTF-8 with BOM 否则 PS5.1 按 GBK 解析报错 | 下次：daily-9am.ps1 Step2 仍调废弃 fetch-x-list.py 可一并切到 fetch-x-home.py
+- [2026-09-24] 承接现有未提交功能：完成多模型 AI 配置链路收尾（防重复生成、空响应校验、错误可见化、自定义地址不泄露服务端 Key）；修通发布箱“物料→封面”参数契约和封面 URL 落库；修正今日灵感筛选；知识库开发态实时重读并支持 `ZMT_WIKI_ROOT`；新增 `.tours/new-joiner-content-pipeline.tour` 接手导览；生产构建与页面/API 冒烟通过
 
 ## 常用命令
 ```bash

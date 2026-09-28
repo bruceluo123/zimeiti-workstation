@@ -3,9 +3,24 @@ import { persist } from "zustand/middleware";
 import type { Platform, PublishItem, Topic, TopicStage } from "@/types/topic";
 import { nextStage, prevStage } from "@/types/topic";
 import { uid } from "@/lib/utils";
+import type { AiCallConfig } from "@/lib/ai";
+
+interface StyleProfile {
+  tone?: string;
+  openingStyle?: string;
+  pace?: string;
+  forbidWords?: string;
+  captionStyle?: string;
+  bgmStyle?: string;
+  authorLabel?: string;
+}
 
 interface TopicsState {
   topics: Topic[];
+  /** 正在后台生成脚本的 topic ID 列表（不持久化） */
+  generatingIds: string[];
+  /** 生成失败时的错误信息（不持久化） */
+  generateErrors: Record<string, string>;
   addTopic: (title: string, platforms: Platform[]) => void;
   removeTopic: (id: string) => void;
   moveTopic: (id: string, dir: "next" | "prev") => void;
@@ -13,6 +28,8 @@ interface TopicsState {
   updateTopic: (id: string, patch: Partial<Omit<Topic, "id" | "createdAt">>) => void;
   setPublishItem: (id: string, item: PublishItem) => void;
   applyRemote: (remote: Topic[]) => void;
+  /** 后台生成口播方案：切换页面不会中断 */
+  generateScript: (id: string, opts: { title: string; note?: string; styleProfile: StyleProfile; aiConfig: AiCallConfig }) => Promise<void>;
 }
 
 function now(): string {
@@ -89,8 +106,50 @@ const seed: Topic[] = [
 
 export const useTopicsStore = create<TopicsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       topics: seed,
+      generatingIds: [],
+      generateErrors: {},
+      generateScript: async (id, { title, note, styleProfile, aiConfig }) => {
+        if (get().generatingIds.includes(id)) return;
+
+        set((s) => ({
+          generatingIds: [...s.generatingIds, id],
+          generateErrors: Object.fromEntries(
+            Object.entries(s.generateErrors).filter(([k]) => k !== id)
+          ),
+        }));
+        try {
+          const res = await fetch("/api/studio/script", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, note, styleProfile, aiConfig }),
+          });
+          const data = (await res.json()) as { script?: string; error?: string };
+          if (!res.ok || data.error) throw new Error(data.error || `生成失败（HTTP ${res.status}）`);
+          const newScript = data.script?.trim();
+          if (!newScript) throw new Error("模型返回了空内容，请重试");
+          set((state) => ({
+            topics: state.topics.map((t) => {
+              if (t.id !== id) return t;
+              const newStage =
+                t.stage === "idea" || t.stage === "material" || t.stage === "shaped"
+                  ? "copy"
+                  : t.stage;
+              return { ...t, script: newScript, stage: newStage, updatedAt: now() };
+            }),
+          }));
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "生成失败";
+          set((s) => ({
+            generateErrors: { ...s.generateErrors, [id]: msg },
+          }));
+        } finally {
+          set((s) => ({
+            generatingIds: s.generatingIds.filter((gid) => gid !== id),
+          }));
+        }
+      },
       addTopic: (title, platforms) =>
         set((state) => ({
           topics: [
@@ -142,6 +201,9 @@ export const useTopicsStore = create<TopicsState>()(
       applyRemote: (remote) =>
         set((state) => ({ topics: mergeTopics(state.topics, remote) })),
     }),
-    { name: "zmt-topics" }
+    {
+      name: "zmt-topics",
+      partialize: (state) => ({ topics: state.topics }),
+    }
   )
 );

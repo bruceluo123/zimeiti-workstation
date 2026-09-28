@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatComplete } from "@/lib/ai";
+import { chatComplete, hasApiKey, type AiCallConfig } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -11,22 +11,21 @@ interface TopicSuggestion {
 }
 
 interface RequestBody {
-  userIdea?: string;       // 用户自己的想法
-  briefItems?: { title: string; summary?: string }[]; // 今日早报条目
+  userIdea?: string;
+  briefItems?: { title: string; summary?: string }[];
   styleProfile?: { tone?: string; authorLabel?: string };
+  aiConfig?: AiCallConfig;
 }
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as RequestBody;
-  const { userIdea, briefItems = [], styleProfile } = body;
+  const { userIdea, briefItems = [], styleProfile, aiConfig } = body;
 
-  if (!process.env.DEEPSEEK_API_KEY) {
-    // 无 AI key 时返回模拟数据，便于前端开发
-    return NextResponse.json({
-      suggestions: [
-        { title: userIdea ?? "请先配置 DEEPSEEK_API_KEY", angle: "—", hook: "—", platforms: ["douyin"] },
-      ],
-    });
+  if (!hasApiKey(aiConfig)) {
+    return NextResponse.json(
+      { error: "请先在设置页配置 API Key", suggestions: [] },
+      { status: 503 }
+    );
   }
 
   const briefContext = briefItems.slice(0, 8)
@@ -60,7 +59,8 @@ ${userIdea ? `"${userIdea}"` : "（用户未提供想法，请从早报素材中
   try {
     const raw = await chatComplete(
       [{ role: "user", content: prompt }],
-      { temperature: 0.8, maxTokens: 800 }
+      { temperature: 0.8, maxTokens: 800 },
+      aiConfig
     );
 
     const jsonStr = raw.match(/\[[\s\S]*\]/)?.[0] ?? "[]";

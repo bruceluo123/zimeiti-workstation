@@ -1,8 +1,9 @@
 "use client";
 
 import { useStyleStore } from "@/store/style-store";
+import { useAiConfigStore, AI_PRESETS } from "@/store/ai-config-store";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useState } from "react";
 
 function Field({
@@ -42,14 +43,24 @@ function Field({
 
 export function SettingsPage() {
   const { profile, setProfile, reset } = useStyleStore();
+  const { config: aiConfig, setConfig: setAiConfig } = useAiConfigStore();
   const [saved, setSaved] = useState(false);
+  const [aiSaved, setAiSaved] = useState(false);
+  const [showKey, setShowKey] = useState(false);
 
   const [draft, setDraft] = useState({ ...profile });
+  const [aiDraft, setAiDraft] = useState({ ...aiConfig });
 
   const handleSave = () => {
     setProfile(draft);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleAiSave = () => {
+    setAiConfig(aiDraft);
+    setAiSaved(true);
+    setTimeout(() => setAiSaved(false), 2000);
   };
 
   const handleReset = () => {
@@ -126,6 +137,97 @@ export function SettingsPage() {
             >
               <RotateCcw className="h-3 w-3" /> 恢复默认
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* AI 接口配置 */}
+      <section className="mb-8">
+        <h2 className="mb-4 text-[13px] font-semibold tracking-wide text-ink">AI 接口配置</h2>
+        <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
+          {/* 预设快选 */}
+          <div>
+            <label className="mb-2 block text-[12.5px] font-medium text-ink">选择大模型</label>
+            <div className="flex flex-wrap gap-2">
+              {AI_PRESETS.map((preset) => {
+                const active = aiDraft.baseUrl === preset.baseUrl && aiDraft.model === preset.model;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() =>
+                      setAiDraft((d) => ({ ...d, baseUrl: preset.baseUrl, model: preset.model }))
+                    }
+                    className={`rounded-[6px] border px-3 py-1.5 text-[12px] transition ${
+                      active
+                        ? "border-terra bg-terra text-white"
+                        : "border-line bg-surface-2 text-ink-soft hover:border-terra hover:text-terra-deep"
+                    }`}
+                  >
+                    {preset.label}
+                    {preset.hint && <span className="ml-1 opacity-60 text-[10px]">{preset.hint}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* API Key */}
+          <div>
+            <label className="mb-1 block text-[12.5px] font-medium text-ink">API Key</label>
+            <p className="mb-1.5 text-[11.5px] text-muted">
+              仅保存在本浏览器；生成内容时会由本站服务端转发给模型厂商
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type={showKey ? "text" : "password"}
+                value={aiDraft.apiKey}
+                onChange={(e) => setAiDraft((d) => ({ ...d, apiKey: e.target.value }))}
+                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                className="flex-1 rounded-[6px] border border-line bg-surface px-3 py-2 font-mono text-[12.5px] text-ink outline-none focus:border-terra"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="flex-none rounded-[6px] border border-line p-2 text-muted hover:text-ink"
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Base URL */}
+          <div>
+            <label className="mb-1 block text-[12.5px] font-medium text-ink">Base URL</label>
+            <input
+              value={aiDraft.baseUrl}
+              onChange={(e) => setAiDraft((d) => ({ ...d, baseUrl: e.target.value }))}
+              placeholder="https://api.deepseek.com/v1"
+              className="w-full rounded-[6px] border border-line bg-surface px-3 py-2 font-mono text-[12.5px] text-ink outline-none focus:border-terra"
+            />
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="mb-1 block text-[12.5px] font-medium text-ink">模型名称</label>
+            <input
+              value={aiDraft.model}
+              onChange={(e) => setAiDraft((d) => ({ ...d, model: e.target.value }))}
+              placeholder="deepseek-chat"
+              className="w-full rounded-[6px] border border-line bg-surface px-3 py-2 font-mono text-[12.5px] text-ink outline-none focus:border-terra"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleAiSave}
+              className="flex items-center gap-1.5 rounded-[6px] bg-terra px-4 py-2 text-[12.5px] font-medium text-white transition hover:bg-terra-deep"
+            >
+              {aiSaved ? <CheckCircle className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+              {aiSaved ? "已保存 ✓" : "保存配置"}
+            </button>
+            <p className="text-[11.5px] text-muted">保存后立即生效，无需刷新页面</p>
           </div>
         </div>
       </section>

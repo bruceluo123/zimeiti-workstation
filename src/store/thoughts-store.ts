@@ -5,7 +5,7 @@ import { uid } from "@/lib/utils";
 
 interface ThoughtsState {
   thoughts: Thought[];
-  addThought: (content: string, tags: string[]) => void;
+  addThought: (content: string, tags: string[], extras?: Pick<Thought, "imageIds" | "sourceUrl">) => void;
   removeThought: (id: string) => void;
   applyRemote: (remote: Thought[]) => void;
 }
@@ -39,24 +39,26 @@ export const useThoughtsStore = create<ThoughtsState>()(
   persist(
     (set) => ({
       thoughts: seed,
-      addThought: (content, tags) =>
+      addThought: (content, tags, extras) =>
         set((state) => ({
           thoughts: [
             {
               id: uid(),
               content: content.trim(),
               tags,
+              imageIds: extras?.imageIds,
+              sourceUrl: extras?.sourceUrl,
               createdAt: new Date().toISOString(),
             },
-            ...state.thoughts,
+            ...(Array.isArray(state.thoughts) ? state.thoughts : []),
           ],
         })),
       removeThought: (id) =>
         set((state) => ({
-          thoughts: state.thoughts.filter((t) => t.id !== id),
+          thoughts: (Array.isArray(state.thoughts) ? state.thoughts : []).filter((t) => t.id !== id),
         })),
       applyRemote: (remote) =>
-        set((state) => ({ thoughts: mergeThoughts(state.thoughts, remote) })),
+        set((state) => ({ thoughts: mergeThoughts(Array.isArray(state.thoughts) ? state.thoughts : [], Array.isArray(remote) ? remote : []) })),
     }),
     { name: "zmt-thoughts" }
   )

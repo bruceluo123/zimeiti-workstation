@@ -1,0 +1,11 @@
+import type { StoredState } from './store.mjs';
+import type { KnowledgeDraft, WritingState, WritingCandidate, EvidenceAnalysis } from '../../src/types/writing';
+export function writingState(state: StoredState): WritingState;
+export function applyWriting(state: StoredState, input: Record<string, unknown>): KnowledgeDraft;
+export function safeUrl(value: string): string;
+export function retrieveWriting(state: StoredState, query: string, limit?: number): WritingCandidate[];
+export function usageFor(state: StoredState, blockId: string): { id: string; title: string; active: boolean; modified: boolean; publications: KnowledgeDraft['publications'] }[];
+export function sourceForBlock(state: StoredState, id: string): { block: StoredState['blocks'][number]; source: StoredState['sources'][number]; chunk: StoredState['sources'][number]['chunks'][number] };
+export const evidenceSchema: object;
+export function validateEvidence(value: unknown, candidates: WritingCandidate[]): Omit<EvidenceAnalysis, 'model'>;
+export function writingPrompt(state: StoredState, query: string, candidates: WritingCandidate[]): string;

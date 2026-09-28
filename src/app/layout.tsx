@@ -1,12 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopBar } from "@/components/layout/TopBar";
-import { SyncProvider } from "@/components/layout/SyncProvider";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "麦满分工作站",
   description: "从念头到发布，一条线走完的内容生产平台",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }], shortcut: "/icon.svg", apple: "/app-icon.svg" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#087F60",
 };
 
 export default function RootLayout({
@@ -17,15 +21,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <SyncProvider>
-          <div className="grid min-h-screen grid-cols-[228px_1fr]">
-            <Sidebar />
-            <div>
-              <TopBar />
-              <main className="animate-fade-up">{children}</main>
-            </div>
-          </div>
-        </SyncProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

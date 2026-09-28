@@ -5,11 +5,16 @@
   "scripts": {
     "dev": "next dev -p 3002",
     "build": "next build",
-    "start": "next start -p 3002",
+    "start": "next start -H 0.0.0.0 -p 3002",
+    "sources:start": "node scripts/start-source-workstation.mjs",
+    "sources:export": "node scripts/export-source-library.mjs",
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
     "@tailwindcss/typography": "^0.5.20",
+    "cheerio": "^1.0.0",
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.469.0",

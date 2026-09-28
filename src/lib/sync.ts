@@ -3,16 +3,10 @@
 // 策略：按 id 合并（merge）而非整数组覆盖，确保「添加永不丢失」；
 // 删除通过墓碑（tombstone）传播，确保删除仍能在多端生效。
 
-// 优先读独立 KV（NEXT_PUBLIC_ZMT_KV_URL / TOKEN）；未配置则回退到与招聘系统共享同一 KV
-// 建议: 在 Upstash 控制台创建独立数据库后填入下方 env，实现完全隔离
-const KV_URL =
-  typeof process !== "undefined" && process.env.NEXT_PUBLIC_ZMT_KV_URL
-    ? process.env.NEXT_PUBLIC_ZMT_KV_URL
-    : "https://positive-mongrel-70521.upstash.io";
-const KV_TOKEN =
-  typeof process !== "undefined" && process.env.NEXT_PUBLIC_ZMT_KV_TOKEN
-    ? process.env.NEXT_PUBLIC_ZMT_KV_TOKEN
-    : "gQAAAAAAARN5AAIgcDE5NDM2NzliZjdjOWY0MjBmYTA0NjhjODhjNTNjZjM3Zg";
+// V2 不再使用此浏览器直连链路。清掉源码中的旧共享凭据回退；
+// 仅在未接入专属数据库的旧部署且显式配置 KV 时保留兼容读取。
+const KV_URL = process.env.NEXT_PUBLIC_ZMT_KV_URL || "";
+const KV_TOKEN = process.env.NEXT_PUBLIC_ZMT_KV_TOKEN || "";
 
 export type DataType = "thoughts" | "topics";
 type ChangeHandler = (type: DataType, data: unknown[], version: number) => void;
@@ -40,6 +34,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let pushTimers: Partial<Record<DataType, ReturnType<typeof setTimeout>>> = {};
 
 async function kvCmd(cmd: string, key: string, body?: string): Promise<string | null> {
+  if (!KV_URL || !KV_TOKEN) return null;
   try {
     const url = `${KV_URL}/${cmd}/${encodeURIComponent(key)}`;
     const opts: RequestInit = { headers: { Authorization: `Bearer ${KV_TOKEN}` } };

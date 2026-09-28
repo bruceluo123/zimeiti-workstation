@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatComplete } from "@/lib/ai";
+import { chatComplete, hasApiKey, type AiCallConfig } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +18,18 @@ interface RequestBody {
   note?: string;
   angle?: string;
   styleProfile?: StyleProfile;
+  aiConfig?: AiCallConfig;
 }
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as RequestBody;
-  const { title, note, angle, styleProfile } = body;
+  const { title, note, angle, styleProfile, aiConfig } = body;
 
-  if (!process.env.DEEPSEEK_API_KEY) {
-    return NextResponse.json({
-      script: `# ${title}\n\n> ⚠️ 请配置 DEEPSEEK_API_KEY 后使用 AI 生成功能\n\n在此处手动填写口播方案…`,
-    });
+  if (!hasApiKey(aiConfig)) {
+    return NextResponse.json(
+      { error: "请先在设置页配置 API Key" },
+      { status: 503 }
+    );
   }
 
   const sp = styleProfile ?? {};
@@ -75,7 +77,8 @@ ${angle ? `**切入角度**：${angle}` : ""}
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      { temperature: 0.75, maxTokens: 2000 }
+      { temperature: 0.75, maxTokens: 2000 },
+      aiConfig
     );
     return NextResponse.json({ script });
   } catch (e) {

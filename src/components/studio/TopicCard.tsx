@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, X, Sparkles, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import type { Topic } from "@/types/topic";
 import { PLATFORMS, STAGE_ORDER } from "@/types/topic";
 import { useTopicsStore } from "@/store/topics-store";
 import { useStyleStore } from "@/store/style-store";
+import { useAiConfigStore } from "@/store/ai-config-store";
 
 interface TopicCardProps {
   topic: Topic;
@@ -16,12 +17,17 @@ export function TopicCard({ topic }: TopicCardProps) {
   const removeTopic = useTopicsStore((s) => s.removeTopic);
   const updateTopic = useTopicsStore((s) => s.updateTopic);
   const profile = useStyleStore((s) => s.profile);
+  const aiConfig = useAiConfigStore((s) => s.config);
 
-  const [generating, setGenerating] = useState(false);
+  const generatingIds = useTopicsStore((s) => s.generatingIds);
+  const generateErrors = useTopicsStore((s) => s.generateErrors);
+  const generateScript = useTopicsStore((s) => s.generateScript);
+  const generating = generatingIds.includes(topic.id);
+  const genError = generateErrors[topic.id] ?? null;
+
   const [scriptOpen, setScriptOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftScript, setDraftScript] = useState(topic.script ?? "");
-  const [genError, setGenError] = useState<string | null>(null);
 
   const stageIndex = STAGE_ORDER.indexOf(topic.stage);
   const isFirst = stageIndex === 0;
@@ -29,35 +35,23 @@ export function TopicCard({ topic }: TopicCardProps) {
   const hasScript = !!topic.script;
   const canGenerate = ["idea", "material", "shaped", "copy"].includes(topic.stage);
 
-  const generateScript = async () => {
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const res = await fetch("/api/studio/script", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: topic.title,
-          note: topic.note,
-          styleProfile: profile,
-        }),
-      });
-      const data = (await res.json()) as { script?: string; error?: string };
-      if (data.error) throw new Error(data.error);
-      const newScript = data.script ?? "";
-      updateTopic(topic.id, {
-        script: newScript,
-        stage: topic.stage === "idea" || topic.stage === "material" || topic.stage === "shaped"
-          ? "copy"
-          : topic.stage,
-      });
-      setDraftScript(newScript);
+  // 生成完成后自动展开口播方案区域，并同步 draftScript
+  const prevGenerating = useRef(false);
+  useEffect(() => {
+    if (prevGenerating.current && !generating && topic.script) {
       setScriptOpen(true);
-    } catch (e) {
-      setGenError(e instanceof Error ? e.message : "生成失败");
-    } finally {
-      setGenerating(false);
+      setDraftScript(topic.script);
     }
+    prevGenerating.current = generating;
+  }, [generating, topic.script]);
+
+  const handleGenerate = () => {
+    generateScript(topic.id, {
+      title: topic.title,
+      note: topic.note,
+      styleProfile: profile,
+      aiConfig,
+    });
   };
 
   const saveEdit = () => {
@@ -169,7 +163,7 @@ export function TopicCard({ topic }: TopicCardProps) {
         {canGenerate && (
           <button
             type="button"
-            onClick={generateScript}
+            onClick={handleGenerate}
             disabled={generating}
             className="flex items-center gap-1 rounded-[5px] border border-terra-wash bg-terra-wash px-2.5 py-1 text-[11px] font-medium text-terra-deep transition enabled:hover:border-terra enabled:hover:bg-terra enabled:hover:text-white disabled:opacity-60"
           >

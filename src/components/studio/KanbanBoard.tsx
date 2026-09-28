@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Newspaper, Sparkles, X } from "lucide-react";
 import { useTopicsStore } from "@/store/topics-store";
 import { useStyleStore } from "@/store/style-store";
+import { useAiConfigStore } from "@/store/ai-config-store";
 import { useHydrated } from "@/hooks/useHydrated";
 import { STAGES } from "@/types/topic";
 import type { Platform } from "@/types/topic";
@@ -22,6 +23,7 @@ export function KanbanBoard() {
   const topics = useTopicsStore((s) => s.topics);
   const addTopic = useTopicsStore((s) => s.addTopic);
   const profile = useStyleStore((s) => s.profile);
+  const aiConfig = useAiConfigStore((s) => s.config);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -32,6 +34,7 @@ export function KanbanBoard() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [briefLoading, setBriefLoading] = useState(false);
   const [sugLoading, setSugLoading] = useState(false);
+  const [sugError, setSugError] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<string[]>([]);
 
   const openPicker = async () => {
@@ -52,6 +55,7 @@ export function KanbanBoard() {
 
   const generateSuggestions = async () => {
     setSugLoading(true);
+    setSugError(null);
     setSuggestions([]);
     try {
       const res = await fetch("/api/studio/topics", {
@@ -61,12 +65,14 @@ export function KanbanBoard() {
           userIdea,
           briefItems: briefItems.map((it) => ({ title: it.title, summary: it.summary })),
           styleProfile: { tone: profile.tone, authorLabel: profile.authorLabel },
+          aiConfig,
         }),
       });
-      const data = (await res.json()) as { suggestions?: Suggestion[] };
+      const data = (await res.json()) as { suggestions?: Suggestion[]; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error || `选题生成失败（HTTP ${res.status}）`);
       setSuggestions(data.suggestions ?? []);
-    } catch {
-      // ignore
+    } catch (e) {
+      setSugError(e instanceof Error ? e.message : "选题生成失败");
     } finally {
       setSugLoading(false);
     }
@@ -195,6 +201,12 @@ export function KanbanBoard() {
                 <Sparkles className="h-3.5 w-3.5" />
                 {sugLoading ? "AI 筛选中…" : "AI 筛选选题方向"}
               </button>
+
+              {sugError && (
+                <p className="mb-4 rounded-[6px] bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                  {sugError}
+                </p>
+              )}
 
               {/* AI suggestions */}
               {suggestions.length > 0 && (

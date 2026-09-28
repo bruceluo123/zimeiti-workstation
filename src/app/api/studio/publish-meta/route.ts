@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatComplete } from "@/lib/ai";
+import { chatComplete, hasApiKey, type AiCallConfig } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,7 @@ interface RequestBody {
   title: string;
   script?: string;
   platform: Platform;
+  aiConfig?: AiCallConfig;
 }
 
 const PLATFORM_GUIDE: Record<Platform, string> = {
@@ -20,14 +21,13 @@ const PLATFORM_GUIDE: Record<Platform, string> = {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as RequestBody;
-  const { title, script, platform } = body;
+  const { title, script, platform, aiConfig } = body;
 
-  if (!process.env.DEEPSEEK_API_KEY) {
-    return NextResponse.json({
-      title: `${title} | ${platform} 配置 DEEPSEEK_API_KEY 后可自动生成`,
-      tags: ["AI", "创作者"],
-      coverPrompt: `${title}，简洁现代风格，${platform}封面`,
-    });
+  if (!hasApiKey(aiConfig)) {
+    return NextResponse.json(
+      { error: "请先在设置页配置 API Key" },
+      { status: 503 }
+    );
   }
 
   const scriptSnippet = script ? script.slice(0, 600) : "";
@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
   try {
     const raw = await chatComplete(
       [{ role: "user", content: prompt }],
-      { temperature: 0.7, maxTokens: 400 }
+      { temperature: 0.7, maxTokens: 400 },
+      aiConfig
     );
     const jsonStr = raw.match(/\{[\s\S]*\}/)?.[0] ?? "{}";
     const meta = JSON.parse(jsonStr) as { title?: string; tags?: string[]; coverPrompt?: string };

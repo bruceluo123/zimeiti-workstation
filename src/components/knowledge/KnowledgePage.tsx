@@ -1,69 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Network, LayoutGrid, Search as SearchIcon } from "lucide-react";
+import { Network, LayoutGrid } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HubWall } from "./HubWall";
 import { KbGraph } from "./KbGraph";
 import { KbSearch } from "./KbSearch";
 import { DocPanel } from "./DocPanel";
-
-// ── 类型（镜像 API 返回）────────────────────────────────────────────────────
-interface HubCard {
-  id: string;
-  title: string;
-  tags: string[];
-  summary: string;
-  path: string;
-  outLinkCount: number;
-  todos: string[];
-  obsidianUri: string;
-}
-
-interface GraphNode {
-  id: string;
-  label: string;
-  kind: "hub" | "source" | "topic" | "entity" | "other";
-  linkCount: number;
-}
-
-interface GraphEdge {
-  source: string;
-  target: string;
-}
-
-interface SearchDoc {
-  id: string;
-  title: string;
-  tags: string;
-  summary: string;
-  kind: string;
-  path: string;
-}
-
-interface DocDetail {
-  id: string;
-  title: string;
-  tags: string[];
-  summary: string;
-  kind: string;
-  path: string;
-  outLinks: string[];
-  todos: string[];
-  content: string;
-  created: string;
-  updated: string;
-  obsidianUri: string;
-}
-
-interface KbData {
-  hubCards: HubCard[];
-  graph: { nodes: GraphNode[]; edges: GraphEdge[] };
-  searchIndex: SearchDoc[];
-  stats: { total: number; hubs: number; sources: number; edges: number };
-}
+import { isKbData, isDocDetail, readKnowledgeResponse, KnowledgeRequestError, type KbData, type DocDetail } from "./response";
 
 type Tab = "hubs" | "graph";
+
+function ReadError({ error, onRetry, onClose }: { error: Error; onRetry: () => void; onClose?: () => void }) {
+  const needsLogin = error instanceof KnowledgeRequestError && (error.status === 401 || error.status === 403);
+  return (
+    <div role="alert" className="rounded-[14px] border border-line bg-surface p-6">
+      <p className="text-[14px] font-semibold text-ink">暂时无法读取知识库</p>
+      <p className="mt-2 text-[13px] text-ink-soft">{error.message}</p>
+      <div className="mt-4 flex gap-3 text-[13px]">
+        <button type="button" onClick={onRetry} className="rounded-lg bg-terra px-3 py-2 text-white">重试读取</button>
+        {needsLogin && <a href="/login" className="rounded-lg border border-line px-3 py-2 text-terra">前往登录</a>}
+        {onClose && <button type="button" onClick={onClose} className="rounded-lg border border-line px-3 py-2">关闭面板</button>}
+      </div>
+    </div>
+  );
+}
 
 export function KnowledgePage() {
   const [data, setData] = useState<KbData | null>(null);
@@ -71,31 +32,45 @@ export function KnowledgePage() {
   const [tab, setTab] = useState<Tab>("hubs");
   const [selectedDoc, setSelectedDoc] = useState<DocDetail | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(false);
-  const [empty, setEmpty] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [reload, setReload] = useState(0);
+  const [docError, setDocError] = useState<Error | null>(null);
+  const [requestedDocId, setRequestedDocId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/kb")
-      .then((r) => r.json() as Promise<KbData>)
-      .then((d) => {
-        setData(d);
-        if (d.stats.total === 0) setEmpty(true);
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    fetch("/api/kb", { signal: controller.signal, cache: "no-store" })
+      .then((response) => readKnowledgeResponse(response, isKbData))
+      .then((result) => { if (!controller.signal.aborted) setData(result); })
+      .catch((cause: unknown) => {
+        if (controller.signal.aborted) return;
+        setData(null);
+        setError(cause instanceof KnowledgeRequestError ? cause : new Error("无法连接工作站，请确认本机服务已启动后重试。"));
       })
-      .catch(() => setEmpty(true))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [reload]);
 
   const openDoc = async (id: string) => {
+    if (loadingDoc) return;
     setLoadingDoc(true);
+    setDocError(null);
+    setSelectedDoc(null);
+    setRequestedDocId(id);
     try {
-      const res = await fetch(`/api/kb/doc?id=${encodeURIComponent(id)}`);
-      if (res.ok) {
-        const doc = (await res.json()) as DocDetail;
-        setSelectedDoc(doc);
-      }
+      const res = await fetch(`/api/kb/doc?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      setSelectedDoc(await readKnowledgeResponse(res, isDocDetail));
+    } catch (cause) {
+      setDocError(cause instanceof KnowledgeRequestError ? cause : new Error("无法连接工作站，请确认本机服务已启动后重试。"));
     } finally {
       setLoadingDoc(false);
     }
   };
+
+  const closeDoc = () => { setSelectedDoc(null); setDocError(null); setRequestedDocId(null); };
+  const panelOpen = !!(selectedDoc || loadingDoc || docError);
 
   return (
     <div className="max-w-[1280px] px-[38px] pb-16 pt-9">
@@ -109,14 +84,6 @@ export function KnowledgePage() {
         }
       />
 
-      {/* 搜索栏（始终显示） */}
-      <div className="mb-6 max-w-[480px]">
-        <KbSearch
-          docs={data?.searchIndex ?? []}
-          onSelect={openDoc}
-        />
-      </div>
-
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -125,63 +92,88 @@ export function KnowledgePage() {
         </div>
       )}
 
-      {empty && !loading && (
+      {error && !loading && <ReadError error={error} onRetry={() => setReload((value) => value + 1)} />}
+
+      {data?.stats.total === 0 && !loading && (
         <div className="rounded-[14px] border border-dashed border-line py-16 text-center">
-          <p className="text-[14px] text-muted">知识库路径暂不可读</p>
+          <p className="text-[14px] text-muted">知识库中还没有可读取的文档</p>
           <p className="mt-1 text-[12.5px] text-muted">
-            本地开发时确保 <code className="rounded bg-surface-2 px-1">D:\wiki\个人知识库\wiki\</code> 存在
+            添加 Markdown 文档或检查现有文件格式后，重试读取。
           </p>
+          <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-4 text-[13px] text-terra">重试读取</button>
         </div>
       )}
 
-      {data && data.stats.total > 0 && (
-        <div className={`flex gap-6 ${selectedDoc ? "items-start" : ""}`}>
-          {/* 左主区 */}
-          <div className="flex-1 min-w-0">
+      {!loading && data && data.stats.total > 0 && (
+        <div className={`flex gap-5 items-start ${panelOpen ? "" : "flex-col"}`}>
+
+          {/* 左栏：侧边栏（面板打开时）或完整布局 */}
+          <div className={panelOpen ? "w-[210px] flex-none" : "w-full"}>
+
+            {/* 搜索栏 */}
+            <div className={`mb-4 ${panelOpen ? "" : "max-w-[480px]"}`}>
+              <KbSearch docs={data.searchIndex} onSelect={openDoc} />
+            </div>
+
             {/* Tab 切换 */}
-            <div className="mb-5 flex gap-1 rounded-xl border border-line bg-surface p-1 w-fit">
+            <div className="mb-4 flex gap-1 rounded-xl border border-line bg-surface p-1 w-fit">
               <button
                 onClick={() => setTab("hubs")}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-medium transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition ${
                   tab === "hubs" ? "bg-terra text-white shadow-sm" : "text-ink-soft hover:text-ink"
                 }`}
               >
-                <LayoutGrid size={14} />
-                枢纽墙
+                <LayoutGrid size={13} />
+                {panelOpen ? "枢纽" : "枢纽墙"}
               </button>
               <button
                 onClick={() => setTab("graph")}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-medium transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition ${
                   tab === "graph" ? "bg-terra text-white shadow-sm" : "text-ink-soft hover:text-ink"
                 }`}
               >
-                <Network size={14} />
+                <Network size={13} />
                 关系图
               </button>
             </div>
 
+            {/* 枢纽墙：面板打开时切紧凑侧边栏模式 */}
             {tab === "hubs" && (
-              <HubWall hubs={data.hubCards} onSelect={openDoc} />
+              <HubWall
+                hubs={data.hubCards}
+                onSelect={openDoc}
+                selectedId={selectedDoc?.id}
+                compact={panelOpen}
+              />
             )}
 
-            {tab === "graph" && (
+            {tab === "graph" && !panelOpen && (
               <KbGraph
                 nodes={data.graph.nodes}
                 edges={data.graph.edges}
                 onNodeClick={openDoc}
               />
             )}
+            {tab === "graph" && panelOpen && (
+              <p className="text-[11.5px] text-muted px-1">关闭面板后查看关系图</p>
+            )}
           </div>
 
-          {/* 右侧文档面板 */}
-          {(selectedDoc || loadingDoc) && (
-            <div className="w-[420px] flex-none sticky top-6" style={{ maxHeight: "calc(100vh - 80px)" }}>
+          {/* 右栏：文档面板（面板打开时显示） */}
+          {panelOpen && (
+            <div className="flex-1 min-w-0 sticky top-6" style={{ maxHeight: "calc(100vh - 80px)" }}>
               {loadingDoc ? (
                 <div className="flex h-64 items-center justify-center rounded-[14px] border border-line bg-surface">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-terra border-t-transparent" />
                 </div>
+              ) : docError ? (
+                <ReadError error={docError} onRetry={() => { if (requestedDocId) void openDoc(requestedDocId); }} onClose={closeDoc} />
               ) : selectedDoc ? (
-                <DocPanel doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
+                <DocPanel
+                  doc={selectedDoc}
+                  onClose={closeDoc}
+                  onSelect={openDoc}
+                />
               ) : null}
             </div>
           )}
