@@ -33,7 +33,8 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
   const publicApi = path === "/api/auth/start" || path === "/api/auth/recover" || path === "/api/inspire" || path === "/api/sources/extract";
-  if (!signedIn && path !== "/login" && !publicApi && !path.startsWith("/auth/")) {
+  const publicAuthPage = path === "/login" || path === "/login/reset-password";
+  if (!signedIn && !publicAuthPage && !publicApi && !path.startsWith("/auth/")) {
     if (path.startsWith("/api/")) {
       const denied = NextResponse.json({ error: "请先登录工作站" }, { status: 401 });
       response.cookies.getAll().forEach((cookie) => denied.cookies.set(cookie));

@@ -95,7 +95,12 @@ export default function LoginPage() {
               {working ? "登录中…" : "登录工作站"}
             </button>
           </form>
-          <a href="/login/reset-password" className="mt-4 block text-center text-sm text-terra underline">已登录？设置或更换密码</a>
+          <a
+            href={`/login/reset-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ""}`}
+            className="mt-4 block text-center text-sm text-terra underline"
+          >
+            修改工作站密码
+          </a>
         </>
       )}
 
